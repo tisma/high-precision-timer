@@ -101,3 +101,27 @@ pub fn x86_64_measure_frequency(measure_duration: &Duration) -> u64 {
 pub fn precision_nanoseconds(frequency: u64) -> f64 {
     1.0e9_f64 / (frequency as f64)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn basic_usage() {
+        use std::{thread, time};
+        let start = start();
+        thread::sleep(time::Duration::from_millis(20));
+        let elapsed_ticks = stop() - start;
+        assert!(elapsed_ticks > 0);
+    }
+
+    #[test]
+    fn basic_usage_with_helper() {
+        use std::{thread, time};
+        let tick_counter = TickCounter::current();
+        thread::sleep(time::Duration::from_millis(20));
+        let elapsed_ticks = tick_counter.elapsed();
+        assert!(elapsed_ticks > 0);
+    }
+}
+
