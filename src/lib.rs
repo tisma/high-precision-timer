@@ -123,5 +123,72 @@ mod tests {
         let elapsed_ticks = tick_counter.elapsed();
         assert!(elapsed_ticks > 0);
     }
+
+    #[test]
+    #[cfg(target_arch = "x86_64")]
+    fn test_x86_64_counters() {
+        use core::arch::x86_64::__rdtscp;
+        use core::arch::x86_64::_rdtsc;
+
+        let counter1 = x86_64_tick_counter();
+        let counter2 = x86_64_tick_counter();
+        let diff_tick_counter = counter2 - counter1;
+        assert!(counter1 < counter2);
+        assert!(diff_tick_counter > 0);
+
+        let counter_start = start();
+        let counter_stop = stop();
+        let diff_tick_counter2 = counter_stop - counter_start;
+        assert!(counter_start < counter_stop);
+        assert!(diff_tick_counter2 > 0);
+
+        let counter3 = unsafe { _rdtsc() };
+        let counter4 = unsafe { _rdtsc() };
+        let diff_tick_counter3 = counter4 - counter3;
+        assert!(counter3 < counter4);
+        assert!(diff_tick_counter3 > 0);
+
+        let mut ecx: u32 = 0;
+        let ptr_ecx: *mut u32 = (&mut ecx) as *mut u32;
+        let counter5 = unsafe { __rdtscp(ptr_ecx) };
+        let cpu_core_id_1 = ecx;
+
+        let counter6 = unsafe { __rdtscp(ptr_ecx) };
+        let cpu_core_id_2 = ecx;
+        let diff_tick_rdtscp = counter6 - counter5;
+
+        assert!(counter5 < counter6);
+        assert!(diff_tick_rdtscp > 0);
+        assert!(cpu_core_id_1 == cpu_core_id_2);
+
+        let (counter7, cpu_core_id_3) = x86_64_processor_id();
+        let (counter8, cpu_core_id_4) = x86_64_processor_id();
+        let diff_tick_asm_rdtscp = counter8 - counter7;
+
+        assert!(counter7 < counter8);
+        assert!(cpu_core_id_1 == cpu_core_id_3);
+        assert!(cpu_core_id_3 == cpu_core_id_4);
+        assert!(diff_tick_asm_rdtscp > 0);
+    }
+
+    #[test]
+    #[cfg(target_arch = "x86_64")]
+    fn test_x86_64_counter_frequency() {
+        let (counter_frequency, frequency_base_) = frequency();
+        assert!(counter_frequency > 0);
+        let estimated_duration = match frequency_base_ {
+            TickCounterFrequencyBase::Hardware => None,
+            TickCounterFrequencyBase::Measured(duration) => Some(duration)
+        };
+        assert_eq!(estimated_duration, Some(Duration::from_millis(1000)));
+    }
+
+    #[test]
+    #[cfg(target_arch = "x86_64")]
+    fn test_x86_64_counter_accuracy() {
+        let counter_frequency = 24_000_000;
+        let counter_accuracy = precision_nanoseconds(counter_frequency);
+        assert_eq!((counter_accuracy as u64), 41);
+    }
 }
 
